@@ -79,6 +79,10 @@ def initialize():
                 c.execute(
                     f"ALTER TABLE investigations ADD COLUMN {name} TEXT DEFAULT '{{}}'"
                 )
+        if "backend" not in columns:
+            c.execute(
+                "ALTER TABLE investigations ADD COLUMN backend TEXT DEFAULT 'legacy'"
+            )
         c.execute(
             "INSERT OR IGNORE INTO settings VALUES('workspace_id',?)",
             (secrets.token_hex(16),),
@@ -137,7 +141,7 @@ def initialize():
 initialize()
 app = FastAPI(
     title="ResolveDesk",
-    version="2.0.0",
+    version="2.1.0",
     description="Evidence-grounded support operations. Account actions execute in the synthetic sandbox; imported tickets never mutate external services.",
 )
 
@@ -270,6 +274,12 @@ def row(c, table, key):
     return dict(r) if r else None
 
 
+def account_backend():
+    """Bind proposals to their evidence source, not just identical data values."""
+    url = os.environ.get("ACCOUNT_API_URL", "").rstrip("/")
+    return "remote:" + url if url else "local"
+
+
 def snapshot(c, t):
     if os.environ.get("ACCOUNT_API_URL"):
         try:
@@ -295,7 +305,13 @@ def digest(s):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "environment": "synthetic sandbox"}
+    return {
+        "status": "ok",
+        "service": "resolvedesk",
+        "version": "2.1.0",
+        "instance": os.environ.get("RESOLVEDESK_INSTANCE", "manual"),
+        "environment": "synthetic sandbox",
+    }
 
 
 @app.get("/api/bootstrap")
@@ -439,11 +455,12 @@ def investigate(tid: int, actor=Depends(identity)):
             ),
         )
         c.execute(
-            "UPDATE investigations SET analysis=?,trace=?,usage=? WHERE id=?",
+            "UPDATE investigations SET analysis=?,trace=?,usage=?,backend=? WHERE id=?",
             (
                 json.dumps(result["analysis"]),
                 json.dumps(result["trace"]),
                 json.dumps(result["usage"]),
+                account_backend(),
                 cur.lastrowid,
             ),
         )
@@ -474,6 +491,12 @@ def approve(rid: int, decision: Decision, actor=Depends(reviewer)):
             return {"status": r["status"], "replayed": True}
         if r["status"] not in ("pending", "execution_unknown"):
             raise HTTPException(409, "Run superseded; investigate again")
+        if r["backend"] != account_backend():
+            raise HTTPException(
+                409,
+                "The account integration changed or this proposal predates source binding. "
+                "Restore the original integration to reconcile uncertain execution; otherwise re-investigate.",
+            )
         t = row(c, "tickets", r["ticket_id"])
         remote = None
         recovered = None
@@ -531,14 +554,40 @@ def approve(rid: int, decision: Decision, actor=Depends(reviewer)):
             c.execute("UPDATE tickets SET status='open' WHERE id=?", (t["id"],))
             audit(c, t["id"], "rejected", actor.username, {"run_id": rid})
             return {"status": "rejected"}
-        s = snapshot(c, t)
-        if digest(s) != r["snapshot"]:
-            raise HTTPException(409, "Account state changed; investigate again")
-        action, _, _ = decide(s["account"], s["member"], t["feature"], s["incident"])
-        if action != r["action"]:
-            raise HTTPException(409, "Policy decision changed")
+        if remote and r["status"] == "execution_unknown":
+            # Retry the same conditional operation even if state now differs. The remote
+            # transaction either returns its recorded result or confirms a no-write conflict.
+            action = "restore_reporting"
+        else:
+            s = snapshot(c, t)
+            if digest(s) != r["snapshot"]:
+                raise HTTPException(409, "Account state changed; investigate again")
+            action, _, _ = decide(
+                s["account"], s["member"], t["feature"], s["incident"]
+            )
+            if action != r["action"]:
+                raise HTTPException(409, "Policy decision changed")
         if action == "restore_reporting":
             if remote:
+                # Commit intent BEFORE the network mutation. Even process termination or
+                # malformed JSON must leave a durable reconciliation requirement.
+                c.execute(
+                    "UPDATE investigations SET status='execution_unknown' WHERE id=?",
+                    (rid,),
+                )
+                audit(
+                    c,
+                    t["id"],
+                    "remote_execution_started",
+                    actor.username,
+                    {"run_id": rid, "key": operation_key, "backend": r["backend"]},
+                )
+                c.commit()
+                # Serialize decisions while retaining the committed crash-recovery marker.
+                c.execute("BEGIN IMMEDIATE")
+                current = row(c, "investigations", rid)
+                if current["status"] == "approved":
+                    return {"status": "approved", "replayed": True}
                 try:
                     result = remote.restore(
                         t["account_id"], t["member_id"], r["snapshot"], operation_key
@@ -551,9 +600,26 @@ def approve(rid: int, decision: Decision, actor=Depends(reviewer)):
                     )
                 except httpx.HTTPStatusError as exc:
                     if exc.response.status_code == 409:
-                        raise HTTPException(
-                            409, "Remote account changed; investigate again"
-                        ) from None
+                        # The reference API serializes its conditional operation, so an
+                        # authenticated conflict confirms that this operation did not run.
+                        c.execute(
+                            "UPDATE investigations SET status='superseded' WHERE id=?",
+                            (rid,),
+                        )
+                        c.execute(
+                            "UPDATE tickets SET status='open' WHERE id=?", (t["id"],)
+                        )
+                        audit(
+                            c,
+                            t["id"],
+                            "remote_execution_declined",
+                            actor.username,
+                            {"run_id": rid},
+                        )
+                        return JSONResponse(
+                            {"detail": "Remote account changed; investigate again"},
+                            status_code=409,
+                        )
                     c.execute(
                         "UPDATE investigations SET status='execution_unknown' WHERE id=?",
                         (rid,),
@@ -571,7 +637,13 @@ def approve(rid: int, decision: Decision, actor=Depends(reviewer)):
                         },
                         status_code=503,
                     )
-                except httpx.HTTPError:
+                except (
+                    httpx.HTTPError,
+                    ValueError,
+                    TypeError,
+                    KeyError,
+                    AttributeError,
+                ):
                     c.execute(
                         "UPDATE investigations SET status='execution_unknown' WHERE id=?",
                         (rid,),

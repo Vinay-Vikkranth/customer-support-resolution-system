@@ -798,3 +798,7 @@ th {
     transition: none !important;
   }
 }
+
+#guide {
+  margin-top: 26px;
+}

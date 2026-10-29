@@ -32,7 +32,7 @@ flowchart LR
 
 Local mode atomically updates permission, verifies it and records the approval. Proposals include a SHA-256 fingerprint of all decision evidence. Changed evidence, closed cases, superseded proposals and contradictory decisions cannot execute.
 
-Remote mode uses an authenticated account API. It independently checks the fingerprint and policy inside its own transaction, then stores the result under a workspace-specific operation key. A timeout after commit yields `execution_unknown` locally. Retrying approval retrieves the remote result and reconciles the case. Do not create a replacement operation to work around uncertainty.
+Remote mode uses an authenticated account API. It independently checks the fingerprint and policy inside its own transaction, then stores the result under a workspace-specific operation key. An execution intent is committed locally before the remote mutation. A timeout, malformed response, or process interruption therefore leaves a durable `execution_unknown` state. Each proposal is also bound to its original account integration. Retrying approval retrieves the remote result and reconciles the case. Do not create a replacement operation to work around uncertainty.
 
 Manual case closure is distinguished from verified resolution. An already-enabled permission escalates instead of incorrectly claiming that the symptom is fixed. Reopening preserves earlier history.
 

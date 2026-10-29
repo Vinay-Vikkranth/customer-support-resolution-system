@@ -1,1 +1,14 @@
-{"name":"resolvedesk","private":true,"version":"2.0.0","scripts":{"format":"prettier --write web scripts/*.cjs","format:check":"prettier --check web scripts/*.cjs","test:e2e":"node scripts/e2e.cjs"},"devDependencies":{"prettier":"3.8.1","playwright":"1.58.2"}}
+{
+  "name": "resolvedesk",
+  "private": true,
+  "version": "2.1.0",
+  "scripts": {
+    "format": "prettier --write web scripts/*.cjs",
+    "format:check": "prettier --check web scripts/*.cjs",
+    "test:e2e": "node scripts/e2e.cjs"
+  },
+  "devDependencies": {
+    "prettier": "3.8.1",
+    "playwright": "1.58.2"
+  }
+}

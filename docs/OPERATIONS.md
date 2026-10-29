@@ -2,12 +2,12 @@
 
 ## First launch
 
-1. Install Python dependencies and run `python run.py`.
-2. Use the printed reviewer development token, or create named users with `manage.py`.
+1. Install Python dependencies and run `python launcher.py start` (or double-click Start-ResolveDesk.cmd on Windows).
+2. Use the reviewer token in data/launcher/LOCAL_ACCESS.txt, or create named users with manage.py.
 3. Confirm `/health`, sign-in, a case investigation and an approval.
 4. Keep `.env`, databases and backups out of Git. `.gitignore` excludes local data and credentials.
 
-The launcher binds to localhost. Configuration uses `.env` (simple KEY=value, no shell expansion) with process environment taking precedence. Empty optional values do not enable integrations.
+The launcher starts a persistent hidden service on localhost, waits for its health check and saves its process identity. Closing the startup window does not stop the server. Use `python launcher.py status` to check and `python launcher.py stop` to stop. Restart after reboot. Keep LOCAL_ACCESS.txt private. A different process using the port will be left alone. `python run.py` remains a foreground developer option and stops when its terminal closes. Configuration uses `.env` (simple KEY=value, no shell expansion) with process environment taking precedence. Empty optional values do not enable integrations.
 
 ## Remote deployment
 

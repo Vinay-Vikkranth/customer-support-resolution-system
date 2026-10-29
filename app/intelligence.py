@@ -5,7 +5,7 @@ import os
 import time
 from typing import Literal
 import httpx
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictInt
 from .engine import POLICIES, decide, retrieve
 
 
@@ -16,6 +16,14 @@ class Analysis(BaseModel):
     policy_ids: list[str] = Field(min_length=1, max_length=5)
     customer_reply: str = Field(min_length=10, max_length=2000)
     next_steps: list[str] = Field(min_length=1, max_length=5)
+
+
+class ModelUsage(BaseModel):
+    """Ignore provider metadata, but never persist malformed token counters."""
+
+    model_config = ConfigDict(extra="ignore")
+    prompt_tokens: StrictInt = Field(default=0, ge=0)
+    completion_tokens: StrictInt = Field(default=0, ge=0)
 
 
 def analyze(ticket, state, transport=None):
@@ -119,6 +127,14 @@ def analyze(ticket, state, transport=None):
                 )
             response.raise_for_status()
             payload = response.json()
+            if not isinstance(payload, dict):
+                raise ValueError("Invalid model response envelope")
+            measured = ModelUsage.model_validate(payload.get("usage", {}))
+            # Preserve valid provider usage even if its analysis later fails validation.
+            usage = {
+                "input_tokens": measured.prompt_tokens,
+                "output_tokens": measured.completion_tokens,
+            }
             candidate = Analysis.model_validate_json(
                 payload["choices"][0]["message"]["content"]
             )
@@ -129,10 +145,6 @@ def analyze(ticket, state, transport=None):
                 raise ValueError("Model proposal conflicts with policy gate")
             result = candidate
             mode = "openai_structured"
-            usage = {
-                "input_tokens": payload.get("usage", {}).get("prompt_tokens", 0),
-                "output_tokens": payload.get("usage", {}).get("completion_tokens", 0),
-            }
         except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
             mode, error = "safe_fallback", type(exc).__name__
     trace.append(

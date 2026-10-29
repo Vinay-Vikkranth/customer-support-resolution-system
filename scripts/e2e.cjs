@@ -96,6 +96,14 @@ const proc = spawn(
       .getByRole("button", { name: "Approve and execute", exact: true })
       .click();
     await page.getByText("Decision saved: resolved", { exact: true }).waitFor();
+    await page
+      .getByText("Verified resolution reply", { exact: true })
+      .waitFor();
+    assert(
+      !(await page.locator(".draft").innerText()).includes(
+        "We have not changed your access",
+      ),
+    );
     await page.getByText("Case notes · 0").click();
     await page
       .locator('textarea[name="note"]')
@@ -129,6 +137,10 @@ const proc = spawn(
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
       "Mobile horizontal overflow",
+    );
+    assert.equal(
+      await page.locator("#guide h2").innerText(),
+      "What does ResolveDesk actually do?",
     );
     assert.deepEqual(errors, []);
     console.log(

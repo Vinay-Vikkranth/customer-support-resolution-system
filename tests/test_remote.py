@@ -118,3 +118,162 @@ def locals_without_self(values):
         for k, v in values.items()
         if k in ("account_id", "member_id", "expected", "key")
     }
+
+
+# Regression coverage discovered during the independent implementation audit.
+def remote_case(monkeypatch, failure):
+    reset()
+    monkeypatch.setenv("ACCOUNT_API_URL", "http://localhost:8001")
+
+    class Gateway:
+        def snapshot(self, account_id, member_id):
+            return remote.get(
+                "/v1/snapshot",
+                headers=AUTH,
+                params={"account_id": account_id, "member_id": member_id},
+            ).json()
+
+        def lookup(self, key):
+            return remote.get("/v1/operation", headers=AUTH, params={"key": key}).json()
+
+        def restore(self, account_id, member_id, expected, key):
+            with __import__("app.main", fromlist=["db"]).db() as c:
+                assert (
+                    c.execute(
+                        "SELECT status FROM investigations ORDER BY id DESC LIMIT 1"
+                    ).fetchone()[0]
+                    == "execution_unknown"
+                )
+            response = remote.post(
+                "/v1/restore", headers=AUTH, json=locals_without_self(locals())
+            )
+            response.raise_for_status()
+            raise failure("Failure after remote commit")
+
+    monkeypatch.setattr("app.main.AccountGateway", Gateway)
+    tid = client.post(
+        "/api/tickets",
+        headers=OP,
+        json={
+            "title": "Durable recovery",
+            "body": "Cannot open reports",
+            "account_id": "acme",
+            "member_id": "alex",
+        },
+    ).json()["id"]
+    run = client.post(f"/api/tickets/{tid}/investigate", headers=OP).json()
+    return tid, run
+
+
+def test_malformed_response_preserves_intent(monkeypatch):
+    tid, run = remote_case(monkeypatch, ValueError)
+    url = f"/api/investigations/{run['id']}/decision"
+    assert client.post(url, headers=RV, json={"decision": "approve"}).status_code == 503
+    assert client.post(f"/api/tickets/{tid}/investigate", headers=OP).status_code == 409
+    assert client.post(url, headers=RV, json={"decision": "approve"}).json()[
+        "reconciled"
+    ]
+
+
+def test_unexpected_abort_preserves_intent(monkeypatch):
+    tid, run = remote_case(monkeypatch, RuntimeError)
+    url = f"/api/investigations/{run['id']}/decision"
+    no_raise = TestClient(app, raise_server_exceptions=False)
+    assert (
+        no_raise.post(url, headers=RV, json={"decision": "approve"}).status_code == 500
+    )
+    assert client.post(f"/api/tickets/{tid}/investigate", headers=OP).status_code == 409
+    assert client.post(url, headers=RV, json={"decision": "approve"}).json()[
+        "reconciled"
+    ]
+
+
+def test_uncertain_operation_cannot_switch_backends(monkeypatch):
+    tid, run = remote_case(monkeypatch, ValueError)
+    url = f"/api/investigations/{run['id']}/decision"
+    assert client.post(url, headers=RV, json={"decision": "approve"}).status_code == 503
+    monkeypatch.delenv("ACCOUNT_API_URL")
+    assert client.post(url, headers=RV, json={"decision": "approve"}).status_code == 409
+
+
+def test_no_write_conflict_releases_uncertain_case(monkeypatch):
+    reset()
+    monkeypatch.setenv("ACCOUNT_API_URL", "http://localhost:8001")
+
+    class Gateway:
+        attempts = 0
+
+        def snapshot(self, account_id, member_id):
+            return remote.get(
+                "/v1/snapshot",
+                headers=AUTH,
+                params={"account_id": account_id, "member_id": member_id},
+            ).json()
+
+        def lookup(self, key):
+            return remote.get("/v1/operation", headers=AUTH, params={"key": key}).json()
+
+        def restore(self, account_id, member_id, expected, key):
+            Gateway.attempts += 1
+            if Gateway.attempts == 1:
+                with database() as c:
+                    c.execute("UPDATE accounts SET status='past_due' WHERE id='acme'")
+                raise httpx.ReadTimeout("No remote operation was submitted")
+            response = remote.post(
+                "/v1/restore", headers=AUTH, json=locals_without_self(locals())
+            )
+            response.raise_for_status()
+            return response.json()
+
+    monkeypatch.setattr("app.main.AccountGateway", Gateway)
+    tid = client.post(
+        "/api/tickets",
+        headers=OP,
+        json={
+            "title": "No write recovery",
+            "body": "Cannot open reports",
+            "account_id": "acme",
+            "member_id": "alex",
+        },
+    ).json()["id"]
+    run = client.post(f"/api/tickets/{tid}/investigate", headers=OP).json()
+    url = f"/api/investigations/{run['id']}/decision"
+    try:
+        assert (
+            client.post(url, headers=RV, json={"decision": "approve"}).status_code
+            == 503
+        )
+        assert (
+            client.post(url, headers=RV, json={"decision": "approve"}).status_code
+            == 409
+        )
+        assert (
+            client.post(f"/api/tickets/{tid}/investigate", headers=OP).status_code
+            == 200
+        )
+    finally:
+        with database() as c:
+            c.execute("UPDATE accounts SET status='active' WHERE id='acme'")
+
+
+def test_connector_rejects_malformed_or_mismatched_response(monkeypatch):
+    from app.account_api import AccountGateway
+
+    monkeypatch.setenv("ACCOUNT_API_URL", "http://localhost:8001")
+    monkeypatch.setenv("ACCOUNT_API_TOKEN", "test")
+    import pytest
+
+    for value in [[], {"found": True}, {"found": "false"}]:
+        with pytest.raises(ValueError):
+            AccountGateway(
+                httpx.MockTransport(lambda request: httpx.Response(200, json=value))
+            ).lookup("operation-key")
+    with pytest.raises(ValueError):
+        AccountGateway(
+            httpx.MockTransport(
+                lambda request: httpx.Response(200, content=b"not json")
+            )
+        ).restore("acme", "alex", "0" * 64, "operation-key")
+    monkeypatch.setenv("ACCOUNT_API_URL", "http://localhost:8001@attacker.example")
+    with pytest.raises(ValueError):
+        AccountGateway()

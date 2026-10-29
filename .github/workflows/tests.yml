@@ -13,8 +13,8 @@ jobs:
           node-version: '22'
       - run: pip install -r requirements.txt
       - run: pip install ruff==0.17.3
-      - run: ruff check app tests scripts evals run.py manage.py evaluate.py --select F
-      - run: ruff format --check app tests scripts evals run.py manage.py evaluate.py
+      - run: ruff check app tests scripts evals run.py manage.py evaluate.py launcher.py --select F
+      - run: ruff format --check app tests scripts evals run.py manage.py evaluate.py launcher.py
       - run: python -m pytest -q
       - run: python -m evals.run
       - run: python scripts/network_smoke.py

@@ -8,7 +8,7 @@ A complete, runnable portfolio application for investigating SaaS reporting-acce
 
 ## Start here
 
-**On Vinay's configured Windows computer:** double-click `Start-ResolveDesk.cmd`, leave its window open, and visit http://127.0.0.1:8000. Use the reviewer token shown there.
+**On Vinay's configured Windows computer:** double-click `Start-ResolveDesk.cmd`. It starts a persistent background service, opens the site, and opens your private local sign-in instructions. The launcher window can close; the server keeps running. After a reboot, run the shortcut again. `Stop-ResolveDesk.cmd` stops only the verified local service.
 
 For a new computer, requires Python 3.12+. In this folder:
 
@@ -18,10 +18,10 @@ python -m venv .venv
 .venv\Scripts\activate
 # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-python run.py
+python launcher.py start
 ```
 
-Open **http://127.0.0.1:8000**. Expand **Use a local development token** and enter the reviewer token printed in the terminal. Start with **Reporting disappeared after upgrade**. No model subscription is required for local mode.
+Open **http://127.0.0.1:8000**. Expand **Use a local development token** and enter the reviewer token from `data/launcher/LOCAL_ACCESS.txt`. Start with **Reporting disappeared after upgrade**. No model subscription is required for local mode.
 
 For named users:
 
@@ -91,7 +91,7 @@ npx playwright install chromium
 node scripts/e2e.cjs
 ```
 
-Local validation: **26 API/security/integration tests passed**, **96 policy combinations passed**, **12 labeled synthetic scenarios passed**. Retrieval hit@3 was **12/12**, versus **9/12** for a fixed-order baseline. The complete desktop/mobile browser workflow and a two-process HTTP integration test passed. See [evaluation report](evals/report.json).
+Local validation: **42 API/security/integration/startup tests passed**, **96 policy combinations passed**, **12 labeled synthetic scenarios passed**. Retrieval hit@3 was **12/12**, versus **9/12** for a fixed-order baseline. The complete desktop/mobile browser workflow and a two-process HTTP integration test passed. See [evaluation report](evals/report.json).
 
 These are small developer-authored fixtures, not an independent customer benchmark. Model calls are contract-tested with simulated responses; live model quality and real Zendesk credentials have not been tested. No customer impact, production scale or savings claims are made.
 

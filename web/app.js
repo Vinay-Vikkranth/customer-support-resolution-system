@@ -252,25 +252,47 @@ async function show(id) {
     }
     box.append(evidence);
     const draft = el("div", undefined, "draft");
+    const resolved =
+      run.status === "approved" && data.ticket.status === "resolved";
+    const escalated =
+      run.status === "approved" && data.ticket.status === "escalated";
+    const historical = !resolved && !escalated && run.status !== "pending";
+    const reply = resolved
+      ? "We restored your reporting permission and verified that it is enabled. Please try opening your reports again and let us know if the problem persists."
+      : escalated
+        ? "We reviewed your reporting-access issue and escalated the case for further investigation. No permission change was made by this action. Our support team will review the next step."
+        : run.draft;
     draft.append(
-      el("h3", "Customer reply draft"),
-      el("p", run.draft),
+      el(
+        "h3",
+        historical
+          ? "Historical investigation draft"
+          : resolved
+            ? "Verified resolution reply"
+            : "Customer reply draft",
+      ),
+      el("p", reply),
       el(
         "small",
-        "Review before sharing. This draft has not been sent.",
+        historical
+          ? "This earlier draft may no longer describe the current state. Reconcile or re-investigate before replying."
+          : "Review before sharing. This draft has not been sent.",
         "subtle",
       ),
-      action(
-        "Copy draft",
-        async () => {
-          await navigator.clipboard.writeText(run.draft);
-          message("Draft copied. Review it before sending.");
-        },
-        "secondary",
-      ),
     );
+    if (!historical)
+      draft.append(
+        action(
+          "Copy draft",
+          async () => {
+            await navigator.clipboard.writeText(reply);
+            message("Draft copied. Review it before sending.");
+          },
+          "secondary",
+        ),
+      );
     box.append(draft);
-    if (run.analysis?.next_steps?.length) {
+    if (run.status === "pending" && run.analysis?.next_steps?.length) {
       const steps = el("ol");
       for (const step of run.analysis.next_steps) steps.append(el("li", step));
       box.append(el("h3", "Recommended next steps"), steps);

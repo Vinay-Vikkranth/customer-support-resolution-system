@@ -17,6 +17,9 @@
       >
       <p class="nav-label">WORKSPACE</p>
       <nav aria-label="Main navigation">
+        <a href="#guide" class="nav-link"
+          >? <span>Understand this project</span></a
+        >
         <a href="#queue" class="nav-link active"
           >◫ <span>Resolution queue</span></a
         ><a href="#knowledge" class="nav-link"
@@ -27,7 +30,7 @@
       <div class="aside-bottom">
         <span class="status-dot"></span> Sandbox workspace<small
           >Synthetic account data<br />Human approval required</small
-        ><span class="version">RESOLVEDESK / 2.0</span>
+        ><span class="version">RESOLVEDESK / 2.1</span>
       </div>
     </aside>
     <main id="main">
@@ -135,6 +138,61 @@
             </div>
           </section>
         </div>
+        <section id="guide">
+          <div class="eyebrow">START HERE / A FIVE-MINUTE WALKTHROUGH</div>
+          <h2>What does ResolveDesk actually do?</h2>
+          <p>
+            A customer says: “I pay for reporting, but I cannot open my
+            reports.” This workspace helps support investigate the cause and
+            safely fix an eligible permission problem.
+          </p>
+          <div class="integration-grid">
+            <div class="integration-card">
+              <span class="tag">01 · Investigate</span>
+              <h3>Check the facts</h3>
+              <p>
+                Select Acme’s reporting case. Investigate checks the paid plan,
+                billing, member, permission and service incident. It retrieves
+                relevant policy references.
+              </p>
+            </div>
+            <div class="integration-card">
+              <span class="tag">02 · Review</span>
+              <h3>Make a human decision</h3>
+              <p>
+                Read the proposed action, evidence and reply draft. Optional AI
+                explains the facts; server rules control permission changes. No
+                fix happens before approval.
+              </p>
+            </div>
+            <div class="integration-card">
+              <span class="tag">03 · Verify</span>
+              <h3>Confirm the outcome</h3>
+              <p>
+                Approve as a reviewer. The system rechecks current facts,
+                restores eligible access and verifies it. An audit record
+                preserves who approved the change.
+              </p>
+            </div>
+          </div>
+          <p>
+            <strong>Try a counterexample:</strong> Birch has a Basic plan. Its
+            request must escalate without receiving paid access. A successful
+            support system also knows when not to act.
+          </p>
+          <p>
+            <strong>What is real here?</strong> The interface, databases, API,
+            authentication and tests are implemented. Customers are synthetic.
+            Live AI and Zendesk need your credentials; a draft is never
+            automatically sent.
+          </p>
+          <p>
+            <strong>What should you learn?</strong> Explain the customer
+            problem, follow one request through the code, demonstrate a rejected
+            action, and explain how retrying a failed network response avoids
+            changing permission twice.
+          </p>
+        </section>
         <section id="knowledge">
           <div class="section-title">
             <div>

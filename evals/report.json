@@ -3,12 +3,12 @@
   "action_accuracy": 1.0,
   "retrieval_hit_at_3": 1.0,
   "fixed_order_baseline_hit_at_3": 0.75,
-  "median_local_latency_ms": 0.154,
+  "median_local_latency_ms": 0.186,
   "policy_matrix": {
     "benchmark": "synthetic authorization matrix",
     "cases": 96,
     "passed": 96,
-    "elapsed_ms": 0.045,
+    "elapsed_ms": 0.037,
     "limitations": "Policy consistency only; not real-world accuracy, retrieval quality, LLM quality or customer outcomes."
   },
   "results": [
@@ -24,7 +24,7 @@
         "POL-003",
         "POL-002"
       ],
-      "latency_ms": 0.684
+      "latency_ms": 0.557
     },
     {
       "id": "enterprise-onboarding",
@@ -38,7 +38,7 @@
         "POL-001",
         "POL-005"
       ],
-      "latency_ms": 0.155
+      "latency_ms": 0.175
     },
     {
       "id": "basic-upsell",
@@ -52,7 +52,7 @@
         "POL-004",
         "POL-002"
       ],
-      "latency_ms": 0.178
+      "latency_ms": 0.185
     },
     {
       "id": "unpaid",
@@ -66,7 +66,7 @@
         "POL-001",
         "POL-002"
       ],
-      "latency_ms": 0.147
+      "latency_ms": 0.237
     },
     {
       "id": "suspended-user",
@@ -80,7 +80,7 @@
         "POL-005",
         "POL-003"
       ],
-      "latency_ms": 0.114
+      "latency_ms": 0.197
     },
     {
       "id": "outage",
@@ -94,7 +94,7 @@
         "POL-001",
         "POL-002"
       ],
-      "latency_ms": 0.128
+      "latency_ms": 0.207
     },
     {
       "id": "already-enabled",
@@ -108,7 +108,7 @@
         "POL-002",
         "POL-005"
       ],
-      "latency_ms": 0.153
+      "latency_ms": 0.187
     },
     {
       "id": "unsupported-export",
@@ -120,7 +120,7 @@
       "retrieved": [
         "POL-005"
       ],
-      "latency_ms": 0.16
+      "latency_ms": 0.166
     },
     {
       "id": "prompt-injection",
@@ -134,7 +134,7 @@
         "POL-003",
         "POL-002"
       ],
-      "latency_ms": 0.162
+      "latency_ms": 0.152
     },
     {
       "id": "billing-and-incident",
@@ -148,7 +148,7 @@
         "POL-003",
         "POL-001"
       ],
-      "latency_ms": 0.14
+      "latency_ms": 0.133
     },
     {
       "id": "healthy-user",
@@ -162,7 +162,7 @@
         "POL-001",
         "POL-005"
       ],
-      "latency_ms": 0.134
+      "latency_ms": 0.119
     },
     {
       "id": "conflicting-customer-claim",
@@ -176,7 +176,7 @@
         "POL-005",
         "POL-003"
       ],
-      "latency_ms": 0.248
+      "latency_ms": 0.202
     }
   ],
   "limitations": "Small developer-authored synthetic fixtures, not a held-out customer benchmark. Local mode only; no LLM quality, cloud latency, or business impact claim."

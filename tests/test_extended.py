@@ -284,3 +284,65 @@ def test_request_limits():
     assert (
         client.post("/api/tickets", headers=OP, content="x" * 66000).status_code == 413
     )
+
+
+@pytest.mark.parametrize(
+    "bad_usage",
+    [
+        None,
+        [],
+        "invalid",
+        {"prompt_tokens": -1},
+        {"prompt_tokens": "350"},
+        {"completion_tokens": True},
+    ],
+)
+def test_malformed_usage_falls_back_without_poisoning_metrics(monkeypatch, bad_usage):
+    monkeypatch.setenv("OPENAI_API_KEY", "fake-test-key")
+    payload = model_payload()
+    payload["usage"] = bad_usage
+    result = analyze(
+        TICKET, STATE, httpx.MockTransport(lambda _: httpx.Response(200, json=payload))
+    )
+    assert result["model_status"] == "safe_fallback"
+    assert result["usage"] == {"input_tokens": 0, "output_tokens": 0}
+    assert result["action"] == "restore_reporting"
+
+
+def test_invalid_analysis_still_counts_valid_provider_usage(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "fake-test-key")
+    payload = model_payload("escalate")
+    result = analyze(
+        TICKET, STATE, httpx.MockTransport(lambda _: httpx.Response(200, json=payload))
+    )
+    assert result["model_status"] == "safe_fallback"
+    assert result["usage"] == {"input_tokens": 350, "output_tokens": 100}
+
+
+def test_nonobject_provider_envelope_falls_back(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "fake-test-key")
+    result = analyze(
+        TICKET, STATE, httpx.MockTransport(lambda _: httpx.Response(200, json=[]))
+    )
+    assert result["model_status"] == "safe_fallback"
+
+
+def test_blank_environment_blocks_dotenv_credentials(monkeypatch):
+    import os
+    from app import config
+
+    monkeypatch.setenv("OPENAI_API_KEY", "")
+    monkeypatch.setenv("ACCOUNT_API_URL", "")
+    monkeypatch.setenv("RESOLVEDESK_DISABLE_TOKENS", "0")
+    monkeypatch.setattr(config.Path, "exists", lambda self: True)
+    monkeypatch.setattr(
+        config.Path,
+        "read_text",
+        lambda self, **kwargs: (
+            "OPENAI_API_KEY=should-not-load\nACCOUNT_API_URL=https://should-not-load.example\nRESOLVEDESK_DISABLE_TOKENS=1"
+        ),
+    )
+    config.load_env()
+    assert os.environ["OPENAI_API_KEY"] == ""
+    assert os.environ["ACCOUNT_API_URL"] == ""
+    assert os.environ["RESOLVEDESK_DISABLE_TOKENS"] == "0"

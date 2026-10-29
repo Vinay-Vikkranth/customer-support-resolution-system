@@ -4,6 +4,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt && useradd --create-home app
 COPY app ./app
 COPY web ./web
+COPY manage.py ./manage.py
 RUN mkdir /app/data && chown -R app:app /app
 USER app
 EXPOSE 8000

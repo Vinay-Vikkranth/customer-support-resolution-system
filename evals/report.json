@@ -1,0 +1,183 @@
+{
+  "fixture_count": 12,
+  "action_accuracy": 1.0,
+  "retrieval_hit_at_3": 1.0,
+  "fixed_order_baseline_hit_at_3": 0.75,
+  "median_local_latency_ms": 0.154,
+  "policy_matrix": {
+    "benchmark": "synthetic authorization matrix",
+    "cases": 96,
+    "passed": 96,
+    "elapsed_ms": 0.045,
+    "limitations": "Policy consistency only; not real-world accuracy, retrieval quality, LLM quality or customer outcomes."
+  },
+  "results": [
+    {
+      "id": "paid-upgrade",
+      "expected": "restore_reporting",
+      "actual": "restore_reporting",
+      "correct": true,
+      "retrieval_hit_at_3": true,
+      "baseline_hit_at_3": true,
+      "retrieved": [
+        "POL-001",
+        "POL-003",
+        "POL-002"
+      ],
+      "latency_ms": 0.684
+    },
+    {
+      "id": "enterprise-onboarding",
+      "expected": "restore_reporting",
+      "actual": "restore_reporting",
+      "correct": true,
+      "retrieval_hit_at_3": true,
+      "baseline_hit_at_3": true,
+      "retrieved": [
+        "POL-002",
+        "POL-001",
+        "POL-005"
+      ],
+      "latency_ms": 0.155
+    },
+    {
+      "id": "basic-upsell",
+      "expected": "escalate",
+      "actual": "escalate",
+      "correct": true,
+      "retrieval_hit_at_3": true,
+      "baseline_hit_at_3": true,
+      "retrieved": [
+        "POL-001",
+        "POL-004",
+        "POL-002"
+      ],
+      "latency_ms": 0.178
+    },
+    {
+      "id": "unpaid",
+      "expected": "escalate",
+      "actual": "escalate",
+      "correct": true,
+      "retrieval_hit_at_3": true,
+      "baseline_hit_at_3": true,
+      "retrieved": [
+        "POL-003",
+        "POL-001",
+        "POL-002"
+      ],
+      "latency_ms": 0.147
+    },
+    {
+      "id": "suspended-user",
+      "expected": "escalate",
+      "actual": "escalate",
+      "correct": true,
+      "retrieval_hit_at_3": true,
+      "baseline_hit_at_3": true,
+      "retrieved": [
+        "POL-002",
+        "POL-005",
+        "POL-003"
+      ],
+      "latency_ms": 0.114
+    },
+    {
+      "id": "outage",
+      "expected": "escalate",
+      "actual": "escalate",
+      "correct": true,
+      "retrieval_hit_at_3": true,
+      "baseline_hit_at_3": false,
+      "retrieved": [
+        "POL-004",
+        "POL-001",
+        "POL-002"
+      ],
+      "latency_ms": 0.128
+    },
+    {
+      "id": "already-enabled",
+      "expected": "no_change",
+      "actual": "no_change",
+      "correct": true,
+      "retrieval_hit_at_3": true,
+      "baseline_hit_at_3": true,
+      "retrieved": [
+        "POL-001",
+        "POL-002",
+        "POL-005"
+      ],
+      "latency_ms": 0.153
+    },
+    {
+      "id": "unsupported-export",
+      "expected": "escalate",
+      "actual": "escalate",
+      "correct": true,
+      "retrieval_hit_at_3": true,
+      "baseline_hit_at_3": false,
+      "retrieved": [
+        "POL-005"
+      ],
+      "latency_ms": 0.16
+    },
+    {
+      "id": "prompt-injection",
+      "expected": "escalate",
+      "actual": "escalate",
+      "correct": true,
+      "retrieval_hit_at_3": true,
+      "baseline_hit_at_3": true,
+      "retrieved": [
+        "POL-001",
+        "POL-003",
+        "POL-002"
+      ],
+      "latency_ms": 0.162
+    },
+    {
+      "id": "billing-and-incident",
+      "expected": "escalate",
+      "actual": "escalate",
+      "correct": true,
+      "retrieval_hit_at_3": true,
+      "baseline_hit_at_3": false,
+      "retrieved": [
+        "POL-004",
+        "POL-003",
+        "POL-001"
+      ],
+      "latency_ms": 0.14
+    },
+    {
+      "id": "healthy-user",
+      "expected": "restore_reporting",
+      "actual": "restore_reporting",
+      "correct": true,
+      "retrieval_hit_at_3": true,
+      "baseline_hit_at_3": true,
+      "retrieved": [
+        "POL-002",
+        "POL-001",
+        "POL-005"
+      ],
+      "latency_ms": 0.134
+    },
+    {
+      "id": "conflicting-customer-claim",
+      "expected": "escalate",
+      "actual": "escalate",
+      "correct": true,
+      "retrieval_hit_at_3": true,
+      "baseline_hit_at_3": true,
+      "retrieved": [
+        "POL-001",
+        "POL-005",
+        "POL-003"
+      ],
+      "latency_ms": 0.248
+    }
+  ],
+  "limitations": "Small developer-authored synthetic fixtures, not a held-out customer benchmark. Local mode only; no LLM quality, cloud latency, or business impact claim."
+}

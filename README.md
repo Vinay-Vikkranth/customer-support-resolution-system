@@ -1,94 +1,128 @@
 # ResolveDesk
 
-![ResolveDesk investigation dashboard](docs-dashboard.png)
+**Customer support, from question to verified resolution.**
 
-An approval-controlled support system: investigate a SaaS reporting-access incident, inspect account and policy evidence, approve a proposed fix, execute it once, and verify the resulting permission.
+A complete, runnable portfolio application for investigating SaaS reporting-access issues. It combines a polished support workspace, evidence retrieval, optional structured AI analysis, human approvals, and verified account actions. It runs without paid credentials; connected services are opt-in.
 
-**Status:** self-contained portfolio pilot with synthetic customers. Not a deployed customer product. Default investigation uses deterministic policies and lexical retrieval. Optional LLM drafting is advisory and cannot authorize actions.
+![ResolveDesk workspace](docs-dashboard.png)
 
-## Run
+## Start here
 
-Python 3.12 recommended.
+Requires Python 3.12+. In this folder:
 
 ```sh
 python -m venv .venv
-# Windows: .venv\Scripts\activate
+# Windows:
+.venv\Scripts\activate
 # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 python run.py
 ```
 
-Open http://127.0.0.1:8000. The launcher prints separate operator and reviewer tokens. Connect as operator to create/investigate tickets; disconnect and connect as reviewer to approve/reject. Credentials stay in browser memory. Restarting rotates tokens unless environment variables are set. On the original development machine run.py also detects the ignored `.deps` directory.
+Open **http://127.0.0.1:8000**. Expand **Use a local development token** and enter the reviewer token printed in the terminal. Start with **Reporting disappeared after upgrade**. No model subscription is required for local mode.
 
-## Demo
+For named users:
 
-1. Investigate Acme's reporting ticket. Its active Pro member has a disabled permission.
-2. Inspect account evidence, policy citations and the proposed restore action. No permission changes yet.
-3. Connect as reviewer and approve. Permission update, verification, ticket resolution and audit insertion commit atomically.
-4. Investigate Birch's Basic-plan request. It escalates without granting access or modifying billing.
-5. Create an eligible request, investigate, then toggle the service-incident control. Approving the old proposal is blocked until re-investigation.
+```sh
+python manage.py create-user vinay --name "Vinay" --role reviewer
+python manage.py create-user analyst --name "Support Analyst" --role operator
+```
 
-## Implemented
+Passwords are entered privately at the prompt. Restarting preserves users and cases. Copy `.env.example` to `.env` for optional configuration; environment variables take precedence. Set `RESOLVEDESK_DISABLE_TOKENS=1` to require named users. Sessions expire after eight hours, and signing out revokes them.
 
-- Responsive ticket queue, creation form, account context, policy library and audit timeline.
-- Server-side operator/reviewer authorization; persistent SQLite accounts, members, tickets and investigations.
-- Reporting permission restoration; unsupported features, suspended members, inactive accounts and outages escalate.
-- Lexical policy retrieval plus mandatory decision-policy citations.
-- State fingerprint validation, superseded-proposal rejection, atomic execution and idempotent approvals.
-- Optional OpenAI drafting with bounded timeout and transparent fallback.
-- Status/latency metrics, `/health`, interactive API documentation at `/docs`.
-- API tests, synthetic policy evaluation, Dockerfile and GitHub Actions.
+## What you can do
 
-## Optional LLM
+- Create, search, filter, reopen, close and annotate support cases; export CSV safely.
+- Investigate account entitlement, member identity, billing, permission and incident evidence.
+- Retrieve policy references with BM25 and inspect the investigation trace.
+- Enable structured AI diagnosis, policy citations, reply drafts and next steps. Invalid output, unavailable models or policy conflicts fall back to verified rules.
+- Approve or reject proposals as a reviewer. No customer replies are sent automatically.
+- Restore reporting access only after policy and state rechecks; verify the outcome and record the actor.
+- Import Zendesk tickets with explicit account mapping, duplicate protection and read-only external access.
+- Run a separate account service over HTTP, with its own database, authentication, conditional writes, operation IDs and lost-response recovery.
+- Inspect model usage and audit history; simulate an incident in local mode.
 
-Set `OPENAI_API_KEY` and optionally `OPENAI_MODEL` (default `gpt-4.1-mini`) in the process environment. Never commit credentials. Only the verified finding and synthetic policies are sent, not raw tickets or account records. Provider availability/pricing depend on your account. No key produces `rules_only`; failures produce `llm_unavailable_fallback`. All drafts need review; no messages are sent.
+## Demo in five minutes
 
-The LLM rewrites established findings. It does not diagnose or authorize changes. A future planner experiment can be compared against this deterministic baseline without weakening the action gate.
+1. Investigate **Acme Studio / Alex**: the active Pro member is entitled, but reporting is disabled.
+2. Read the trace, policy evidence and draft. The account is still unchanged.
+3. Approve in the confirmation dialog. The permission is updated and verified; the case becomes **Resolved**.
+4. Investigate **Birch Works / Sam**: the Basic plan is not entitled. Approve the escalation; access stays disabled.
+5. Reopen Acme with a reason. Its permission is already enabled, so the next investigation escalates for further diagnosis instead of claiming another successful repair.
 
-## Architecture
+For a stale-approval scenario, investigate an eligible case, toggle the service incident, then approve. Execution is blocked until re-investigation. Detailed presenter notes: [demo walkthrough](docs/DEMO.md).
 
-Dashboard → FastAPI role authorization → account/ticket SQLite adapter → policy investigator → optional LLM draft → persisted proposal → human reviewer → state/policy recheck → atomic action, verification and audit.
+## Optional AI
 
-The account adapter is an in-process sandbox integration, not a live Salesforce/Zendesk service. This makes the initial system reproducible without external credentials.
+Set `OPENAI_API_KEY` in the server environment or ignored `.env`; `OPENAI_MODEL` defaults to `gpt-4.1-mini`. The configured model must support Chat Completions structured outputs. The implementation follows the [official structured-output contract](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=chat).
 
-## Validation
+This sends the selected ticket text, account evidence and retrieved policies to the configured OpenAI account. Use synthetic or authorized data. No key means no model calls. The model performs evidence-based diagnosis and drafting, while deterministic server policy independently constrains execution. It is a bounded investigation workflow, not an unconstrained autonomous agent. Model text still requires human review.
+
+Token usage is recorded. Dollar cost is intentionally not guessed. A configurable daily investigation guard defaults to 200 recorded investigations when AI is enabled; this is an application guard, not a provider-enforced spending cap.
+
+## Networked account integration
+
+Run the reference service in a second terminal with the same `ACCOUNT_API_TOKEN`:
+
+```sh
+# Configure ACCOUNT_API_TOKEN in .env, then:
+python -m uvicorn app.account_service:app --host 127.0.0.1 --port 8001
+```
+
+Set `ACCOUNT_API_URL=http://127.0.0.1:8001` in `.env` and restart ResolveDesk. The reference service is a real HTTP integration backed by a separate database, using synthetic customers. Its contract is documented at http://127.0.0.1:8001/docs. It does not represent a production customer's system.
+
+The remote service atomically rechecks state, authorizes, updates, verifies and stores an idempotent operation result. If a response is lost, the case enters an uncertain execution state; retry the **same approval** to reconcile the recorded result. Re-investigation and manual closure cannot bypass that recovery.
+
+## Zendesk intake
+
+Set `ZENDESK_SUBDOMAIN`, `ZENDESK_EMAIL` and `ZENDESK_API_TOKEN`. A reviewer can then choose **Integrations → Import a ticket**, enter its ID, and map it to a known account/member. The connector calls Zendesk's ticket API using token authentication. It never sends replies or changes Zendesk records. Account execution remains in your configured synthetic account service. Real account provisioning and mapping are an operator responsibility; never map actual customers to demonstration accounts for production use.
+
+## Verify
 
 ```sh
 python -m pytest -q
-python evaluate.py
+python -m evals.run
+python scripts/network_smoke.py
+# Optional isolated browser test:
+npm install --no-save playwright@1.58.2
+npx playwright install chromium
+node scripts/e2e.cjs
 ```
 
-Tests cover authentication, role separation, approval, duplicate execution, stale state, superseded proposals, rejection, account mismatch and malicious ticket instructions. The evaluation checks 96 synthetic authorization combinations. This demonstrates policy consistency, not real ticket understanding, retrieval accuracy, LLM quality or measured time savings.
+Local validation: **26 API/security/integration tests passed**, **96 policy combinations passed**, **12 labeled synthetic scenarios passed**. Retrieval hit@3 was **12/12**, versus **9/12** for a fixed-order baseline. The complete desktop/mobile browser workflow and a two-process HTTP integration test passed. See [evaluation report](evals/report.json).
 
-## Container
+These are small developer-authored fixtures, not an independent customer benchmark. Model calls are contract-tested with simulated responses; live model quality and real Zendesk credentials have not been tested. No customer impact, production scale or savings claims are made.
+
+## Deployment and operations
 
 ```sh
-docker build -t resolvedesk .
-docker run --rm -p 127.0.0.1:8000:8000 --env-file .env -v resolvedesk-data:/app/data resolvedesk
+# First create .env with separate credentials or named-user configuration.
+docker compose up --build -d
+# To include the independent account service, set ACCOUNT_API_TOKEN in .env:
+docker compose -f compose.yaml -f compose.integration.yaml up --build -d
+# Create a named user inside the running container:
+docker compose exec resolvedesk python manage.py create-user vinay --name Vinay --role reviewer
 ```
 
-Copy `.env.example` to `.env` and replace both tokens with different random secrets. The image uses a non-root user. Docker configuration is provided; successful container execution is not claimed until tested. Add HTTPS and an identity-aware proxy before remote access.
+Containers use a non-root user, persistent volumes, health checks and restricted capabilities. Host ports bind to loopback. For remote access, place an HTTPS reverse proxy in front and use named users with development tokens disabled. This is a single-workspace application; it does not claim enterprise SSO or tenant isolation. Use one separately configured deployment per organization.
 
-## Operations and boundaries
+```sh
+python manage.py check
+python manage.py backup backups/resolvedesk-backup.db
+python manage.py disable-user analyst
+```
 
-- Persistent database: `data/resolvedesk.db`. Use SQLite backup APIs while running, or copy it after stopping the server.
-- To reset synthetic data, stop the server and remove its database/WAL/SHM files. Do not reset data you need.
-- Re-investigate stale proposals. LLM outages fall back. Database exceptions roll back mutations.
-- Shared role tokens are single-workspace demo credentials. Real deployment needs individual SSO, tenant isolation, rate limiting, managed secrets, external integrations and durable operational telemetry.
-- Audit events are application-append-only, not tamper-proof against database administrators.
-- Enabled permission alone does not prove resolution: `no_change` escalates for further investigation.
-- No real customer deployment, paid model invocation, production load testing or business impact is claimed.
+See [operations runbook](docs/OPERATIONS.md) and [architecture](docs/ARCHITECTURE.md). CI runs application, evaluation, browser, network and container checks. A public hosted deployment is not included; hosting and live service credentials require the owner's accounts. The local computer has no Docker runtime; consult the actual GitHub Actions result for container verification.
 
-## FDE evidence
+## Project structure
 
-| Requirement | Evidence |
-|---|---|
-| Customer workflow | Entitlement incident through reviewed resolution |
-| Full-stack delivery | Dashboard and documented API |
-| Integration | Account, membership and ticket data adapters |
-| AI boundaries | Retrieved evidence and optional grounded drafting |
-| Reliability | Transactions, stale checks, idempotency and fallback |
-| Evaluation | API failure cases and synthetic policy matrix |
-| Handover | Run/deployment instructions and explicit limitations |
+```text
+app/           API, auth, policy retrieval, AI analysis, external adapters
+web/           Responsive accessible workspace, no frontend build required
+scripts/       Browser and two-service integration tests
+tests/         Authentication, workflow, AI contract, recovery tests
+evals/         Labeled scenarios, baseline comparison, saved report
+docs/          Architecture, demo, operations and mobile screenshot
+```
 
-Next validation: a support-practitioner usability session and an independently authored ticket evaluation set.
+Built as demonstrable Forward-Deployed Engineer work: customer workflow, full-stack delivery, integration contracts, safe AI boundaries, evaluation, operational recovery and handover. All customers and account actions in the demo are synthetic.

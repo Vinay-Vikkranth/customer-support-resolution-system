@@ -5,3 +5,9 @@ data
 .env
 __pycache__
 .pytest_cache
+
+.tools
+node_modules
+backups
+docs
+*.png

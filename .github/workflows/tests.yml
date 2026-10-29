@@ -1,12 +1,43 @@
-name: Tests
+name: Verify ResolveDesk
 on: [push, pull_request]
 jobs:
-  test:
+  application:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - run: pip install -r requirements.txt
+      - run: pip install ruff==0.17.3
+      - run: ruff check app tests scripts evals run.py manage.py evaluate.py --select F
+      - run: ruff format --check app tests scripts evals run.py manage.py evaluate.py
       - run: python -m pytest -q
+      - run: python -m evals.run
+      - run: python scripts/network_smoke.py
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run format:check
+      - run: node scripts/e2e.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verification-evidence
+          path: |
+            evals/report.json
+            docs-dashboard.png
+            docs/mobile.png
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t resolvedesk:test .
+      - name: Boot container and check API
+        run: |
+          docker run -d --name resolvedesk -p 127.0.0.1:18080:8000 -e RESOLVEDESK_TOKEN=ci-operator -e RESOLVEDESK_REVIEW_TOKEN=ci-reviewer resolvedesk:test
+          for i in $(seq 1 30); do curl --fail http://127.0.0.1:18080/health && break || sleep 1; done
+          curl --fail -H 'Authorization: Bearer ci-operator' http://127.0.0.1:18080/api/tickets
+      - if: always()
+        run: docker logs resolvedesk

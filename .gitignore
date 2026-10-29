@@ -6,3 +6,6 @@ data/
 .env
 *.db*
 test-results/
+node_modules/
+backups/
+.tools/

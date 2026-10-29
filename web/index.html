@@ -1,11 +1,317 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ResolveDesk · Support operations</title><link rel="stylesheet" href="/static/style.css"><script defer src="/static/app.js"></script></head><body>
-<aside><div class="brand">R<span>ResolveDesk</span></div><p>SUPPORT OPERATIONS</p><a href="#queue">◫ &nbsp; Resolution queue</a><a href="#knowledge">▤ &nbsp; Knowledge base</a><div class="aside-bottom">Sandbox workspace<br><small>Synthetic customers · Local pilot</small></div></aside>
-<main><header><div><small>WORKSPACE / OPERATIONS</small><h1>Make every resolution count.</h1><p>Investigate with evidence. Act with approval.</p></div><span class="pill">● Sandbox online</span></header>
-<section id="login"><h2>Connect to your workspace</h2><p>Enter the operator or reviewer token printed by the local launcher.</p><form id="loginForm"><input id="token" type="password" placeholder="Workspace token" required autocomplete="off"><button>Connect</button></form></section>
-<div id="workspace" hidden><div class="toolbar"><span id="role"></span><button id="logout" class="secondary">Disconnect</button></div><div id="metrics" class="metrics"></div>
-<div class="layout" id="queue"><section class="queue"><div class="section-title"><h2>Resolution queue</h2><button id="newTicket" class="secondary">+ New ticket</button></div><div id="tickets"></div></section><section id="detail"><div class="empty"><h2>Your investigation workspace</h2><p>Select a ticket to inspect its account context and supporting evidence.</p></div></section></div>
-<section id="knowledge"><h2>Policy library</h2><p>Versioned policy references used by the investigation workflow.</p><div id="policies" class="policies"></div></section>
-<section id="controls" hidden><h2>Sandbox controls</h2><p>Simulate a reporting outage to test escalation and stale-approval protection.</p><button id="incident" class="secondary">Toggle service incident</button><span id="incidentState"></span></section></div>
-<p id="message" role="status" aria-live="polite"></p>
-<dialog id="createDialog"><form id="createForm"><h2>New support ticket</h2><label>Subject<input name="title" minlength="3" maxlength="160" required></label><label>Customer account<select name="account_id" id="accountSelect"></select></label><label>Member<select name="member_id" id="memberSelect"></select></label><label>Feature<select name="feature"><option>reporting</option><option>exports</option></select></label><label>Description<textarea name="body" minlength="5" maxlength="5000" required></textarea></label><div class="actions"><button type="button" id="cancel" class="secondary">Cancel</button><button>Create ticket</button></div></form></dialog>
-</main></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#153c35" />
+    <title>ResolveDesk · Support operations</title>
+    <link rel="icon" href="/static/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/style.css" />
+    <script defer src="/static/app.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to workspace</a>
+    <aside>
+      <a class="brand" href="#queue"
+        ><span class="brand-mark">r.</span>ResolveDesk</a
+      >
+      <p class="nav-label">WORKSPACE</p>
+      <nav aria-label="Main navigation">
+        <a href="#queue" class="nav-link active"
+          >◫ <span>Resolution queue</span></a
+        ><a href="#knowledge" class="nav-link"
+          >▤ <span>Knowledge library</span></a
+        ><a href="#integrations" class="nav-link">⇄ <span>Integrations</span></a
+        ><a href="#operations" class="nav-link">◷ <span>Operations</span></a>
+      </nav>
+      <div class="aside-bottom">
+        <span class="status-dot"></span> Sandbox workspace<small
+          >Synthetic account data<br />Human approval required</small
+        ><span class="version">RESOLVEDESK / 2.0</span>
+      </div>
+    </aside>
+    <main id="main">
+      <header>
+        <div>
+          <div class="eyebrow">CUSTOMER EXPERIENCE / OPERATIONS</div>
+          <h1>Clarity before action.</h1>
+          <p>Turn support questions into evidence-backed resolutions.</p>
+        </div>
+        <span class="pill">● &nbsp; Local account sandbox</span>
+      </header>
+      <section id="login" class="login-card">
+        <div class="eyebrow">WELCOME TO RESOLVEDESK</div>
+        <h2>Your support command center.</h2>
+        <p>
+          One place to investigate, review, and resolve—with a record of every
+          decision.
+        </p>
+        <form id="userLoginForm">
+          <label
+            >Username<input
+              id="username"
+              required
+              autocomplete="username"
+              placeholder="Your workspace username" /></label
+          ><label
+            >Password<input
+              id="password"
+              type="password"
+              required
+              autocomplete="current-password"
+              placeholder="Your password" /></label
+          ><button>Sign in to workspace →</button>
+        </form>
+        <details>
+          <summary>Use a local development token</summary>
+          <p>Copy an operator or reviewer token from the launcher.</p>
+          <form id="loginForm">
+            <label class="sr-only" for="token">Workspace token</label
+            ><input
+              id="token"
+              type="password"
+              placeholder="Workspace token"
+              required
+              autocomplete="off"
+            /><button>Connect</button>
+          </form>
+        </details>
+        <div class="login-footer">Investigate → Review → Execute → Verify</div>
+      </section>
+      <div id="workspace" hidden>
+        <div class="toolbar">
+          <div>
+            <span id="role"></span><span id="aiMode" class="subtle"></span>
+          </div>
+          <div class="actions compact">
+            <button id="export" class="secondary">↓ Export cases</button
+            ><button id="logout" class="secondary">Sign out</button>
+          </div>
+        </div>
+        <div id="metrics" class="metrics"></div>
+        <div class="layout" id="queue">
+          <section class="queue">
+            <div class="section-title">
+              <h2>
+                Resolution queue <span id="caseCount" class="count"></span>
+              </h2>
+              <button
+                id="newTicket"
+                class="icon-button"
+                aria-label="New ticket"
+              >
+                +
+              </button>
+            </div>
+            <label class="sr-only" for="search">Search tickets</label
+            ><input
+              id="search"
+              type="search"
+              placeholder="Search cases or accounts…"
+            /><label class="sr-only" for="statusFilter">Filter by status</label
+            ><select id="statusFilter">
+              <option value="">All statuses</option>
+              <option value="open">Open</option>
+              <option value="awaiting_review">Awaiting review</option>
+              <option value="resolved">Resolved</option>
+              <option value="escalated">Escalated</option>
+              <option value="closed">Closed</option>
+            </select>
+            <div id="tickets"></div>
+          </section>
+          <section id="detail">
+            <div class="empty">
+              <div class="empty-symbol">◎</div>
+              <div class="eyebrow">READY WHEN YOU ARE</div>
+              <h2>Every resolution starts<br />with the right evidence.</h2>
+              <p>
+                Select a case to inspect its account, investigate the issue, and
+                review the next action.
+              </p>
+              <div class="workflow">
+                <span>01 · Investigate</span><span>02 · Review</span
+                ><span>03 · Verify</span>
+              </div>
+            </div>
+          </section>
+        </div>
+        <section id="knowledge">
+          <div class="section-title">
+            <div>
+              <div class="eyebrow">GROUNDED IN YOUR POLICIES</div>
+              <h2>Knowledge library</h2>
+            </div>
+            <span class="pill neutral">Policy set v1.0</span>
+          </div>
+          <p>
+            Retrieved references support the investigation. Server rules
+            independently enforce allowed actions.
+          </p>
+          <div id="policies" class="policies"></div>
+        </section>
+        <section id="integrations">
+          <div class="eyebrow">CONNECTED CONTEXT</div>
+          <h2>Integrations</h2>
+          <div class="integration-grid">
+            <div class="integration-card">
+              <span class="tag resolved">Connected</span>
+              <h3>Account sandbox</h3>
+              <p>
+                Persistent customer plans, membership, permissions, and service
+                incidents. All approved changes happen here.
+              </p>
+            </div>
+            <div class="integration-card">
+              <span id="zendeskStatus" class="tag"></span>
+              <h3>Zendesk intake</h3>
+              <p>
+                Import a real ticket with an explicit account/member mapping.
+                Read-only: no replies or changes are sent to Zendesk.
+              </p>
+              <button id="importButton" class="secondary">
+                Import a ticket
+              </button>
+            </div>
+            <div class="integration-card">
+              <span id="modelStatus" class="tag"></span>
+              <h3>AI investigator</h3>
+              <p>
+                Structured analysis, cited policies, customer reply drafts, and
+                next steps. Missing or invalid model output falls back safely.
+              </p>
+            </div>
+          </div>
+        </section>
+        <section id="operations">
+          <div class="eyebrow">OBSERVABILITY</div>
+          <h2>Operations</h2>
+          <p id="operationSummary">
+            Reviewer access is required for workspace-wide audit and model
+            usage.
+          </p>
+          <div id="operationContent"></div>
+        </section>
+        <section id="controls" hidden>
+          <h2>Scenario testing</h2>
+          <p>
+            Simulate an outage to test escalation and protection against
+            outdated approvals.
+          </p>
+          <button id="incident" class="secondary">
+            Toggle service incident</button
+          ><span id="incidentState"></span>
+        </section>
+        <footer>
+          ResolveDesk · Evidence, judgment, action.<span
+            >Portfolio implementation · Synthetic execution environment</span
+          >
+        </footer>
+      </div>
+      <div id="message" role="status" aria-live="polite" hidden></div>
+      <dialog id="createDialog">
+        <form id="createForm">
+          <div class="eyebrow">NEW CASE</div>
+          <h2>What can we help with?</h2>
+          <label
+            >Subject<input
+              name="title"
+              minlength="3"
+              maxlength="160"
+              required /></label
+          ><label
+            >Customer account<select
+              name="account_id"
+              id="accountSelect"
+            ></select></label
+          ><label
+            >Member<select name="member_id" id="memberSelect"></select></label
+          ><label
+            >Feature<select name="feature">
+              <option>reporting</option>
+              <option>exports</option>
+            </select></label
+          ><label
+            >Description<textarea
+              name="body"
+              minlength="5"
+              maxlength="5000"
+              required
+            ></textarea>
+          </label>
+          <div class="actions">
+            <button type="button" id="cancel" class="secondary">Cancel</button
+            ><button>Create ticket</button>
+          </div>
+        </form>
+      </dialog>
+      <dialog id="decisionDialog">
+        <form id="decisionForm">
+          <div class="eyebrow">HUMAN REVIEW</div>
+          <h2 id="decisionTitle"></h2>
+          <p id="decisionDescription"></p>
+          <p>
+            No customer message will be sent. This decision is recorded in the
+            audit history.
+          </p>
+          <div class="actions">
+            <button type="button" id="decisionCancel" class="secondary">
+              Cancel</button
+            ><button id="decisionConfirm">Confirm</button>
+          </div>
+        </form>
+      </dialog>
+      <dialog id="statusDialog">
+        <form id="statusForm">
+          <h2>Update case status</h2>
+          <label
+            >New status<select id="newStatus">
+              <option value="open">Reopen</option>
+              <option value="escalated">Escalate</option>
+              <option value="closed">Close manually</option>
+            </select></label
+          ><label
+            >Reason<textarea
+              id="statusReason"
+              required
+              minlength="5"
+              maxlength="1000"
+            ></textarea>
+          </label>
+          <div class="actions">
+            <button type="button" id="statusCancel" class="secondary">
+              Cancel</button
+            ><button>Save status</button>
+          </div>
+        </form>
+      </dialog>
+      <dialog id="importDialog">
+        <form id="importForm">
+          <h2>Import from Zendesk</h2>
+          <p>
+            Map the external ticket to a verified local account. Execution stays
+            in the sandbox.
+          </p>
+          <label
+            >Zendesk ticket ID<input
+              name="ticket_id"
+              type="number"
+              min="1"
+              required /></label
+          ><label
+            >Account<select
+              id="importAccount"
+              name="account_id"
+            ></select></label
+          ><label
+            >Member<select id="importMember" name="member_id"></select
+          ></label>
+          <div class="actions">
+            <button type="button" id="importCancel" class="secondary">
+              Cancel</button
+            ><button>Import</button>
+          </div>
+        </form>
+      </dialog>
+    </main>
+  </body>
+</html>
